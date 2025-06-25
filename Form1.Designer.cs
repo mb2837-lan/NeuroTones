@@ -1,4 +1,4 @@
-﻿namespace BinauralBeats
+﻿namespace NeuroTones
 {
     partial class Form1
     {
