@@ -107,7 +107,7 @@ namespace BinauralBeats
             }
         }
 
-        public void Start(float baseFreq, float beatFreq)
+        public void Start(float baseFreq, float beatFreq, bool playWhiteNoise = false)
         {
             Stop();
 
@@ -118,6 +118,14 @@ namespace BinauralBeats
             _waveOut = new WaveOutEvent();
             _waveOut.Init(_provider);
             _waveOut.Play();
+
+            if (playWhiteNoise)
+            {
+                var whiteNoiseProvider = new WhiteNoiseProvider();
+                var whiteNoiseWaveOut = new WaveOutEvent();
+                whiteNoiseWaveOut.Init(whiteNoiseProvider);
+                whiteNoiseWaveOut.Play();
+            }
         }
 
         public void StartBrownNoise()
@@ -185,6 +193,7 @@ namespace BinauralBeats
         private Label _timerLabel;
         private System.Windows.Forms.Timer _playbackTimer;
         private TimeSpan _remainingTime;
+        private CheckBox _playWhiteNoiseCheckbox;
 
         private AudioEngine _engine;
 
@@ -275,7 +284,7 @@ namespace BinauralBeats
 
                 if (_tabControl.SelectedTab == _binauralTab)
                 {
-                    _engine.Start((float)_baseFreqInput.Value, (float)_beatFreqInput.Value);
+                    _engine.Start((float)_baseFreqInput.Value, (float)_beatFreqInput.Value, _playWhiteNoiseCheckbox.Checked);
                 }
                 else if (_tabControl.SelectedTab == _noiseTab)
                 {
@@ -326,23 +335,39 @@ namespace BinauralBeats
             _presetAlphaButton = new Button { Text = "Alpha (10Hz)", Location = new System.Drawing.Point(10, 80) };
             _presetThetaButton = new Button { Text = "Theta (6Hz)", Location = new System.Drawing.Point(120, 80) };
 
+            _playWhiteNoiseCheckbox = new CheckBox
+            {
+                Text = "Play White Noise Simultaneously",
+                Location = new System.Drawing.Point(10, 120),
+                AutoSize = true
+            };
+
             _presetAlphaButton.Click += (s, e) =>
             {
                 _baseFreqInput.Value = 200;
                 _beatFreqInput.Value = 10;
                 _engine.Start(200, 10);
+                if (_playWhiteNoiseCheckbox.Checked)
+                {
+                    _engine.StartWhiteNoise();
+                }
             };
             _presetThetaButton.Click += (s, e) =>
             {
                 _baseFreqInput.Value = 200;
                 _beatFreqInput.Value = 6;
                 _engine.Start(200, 6);
+                if (_playWhiteNoiseCheckbox.Checked)
+                {
+                    _engine.StartWhiteNoise();
+                }
             };
 
             _binauralTab.Controls.Add(_baseFreqInput);
             _binauralTab.Controls.Add(_beatFreqInput);
             _binauralTab.Controls.Add(_presetAlphaButton);
             _binauralTab.Controls.Add(_presetThetaButton);
+            _binauralTab.Controls.Add(_playWhiteNoiseCheckbox);
         }
 
         private void InitializeNoiseTab()
