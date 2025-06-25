@@ -1,7 +1,7 @@
 using System;
+using System.IO;
 using System.Windows.Forms;
 using NAudio.Wave;
-using System.IO;
 
 namespace BinauralBeats
 {
@@ -150,23 +150,26 @@ namespace BinauralBeats
         private Button _startButton;
         private Button _stopButton;
         private TrackBar _volumeSlider;
-        private AudioEngine _engine;
-        private TrackBar _durationSlider;
+        private ComboBox _durationSelector;
+        private Label _timerLabel;
         private System.Windows.Forms.Timer _playbackTimer;
+        private TimeSpan _remainingTime;
+
+        private AudioEngine _engine;
 
         public Form1()
         {
             _engine = new AudioEngine();
 
             Text = "NeuroTones";
-            MinimumSize = new System.Drawing.Size(360, 460);
-            Icon = new Icon("neurotones.ico");
+            Size = new System.Drawing.Size(800, 600);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
 
             _tabControl = new TabControl
             {
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-                Location = new System.Drawing.Point(0, 40),
-                Size = new System.Drawing.Size(ClientSize.Width, ClientSize.Height - 130)
+                Location = new System.Drawing.Point(10, 10),
+                Size = new System.Drawing.Size(500, 400)
             };
 
             _binauralTab = new TabPage("Binaural Beats");
@@ -177,6 +180,8 @@ namespace BinauralBeats
             InitializeNoiseTab();
             InitializeMriTab(_mriTab);
 
+            Icon = new Icon("neurotones.ico");
+
             _tabControl.TabPages.Add(_binauralTab);
             _tabControl.TabPages.Add(_noiseTab);
             _tabControl.TabPages.Add(_mriTab);
@@ -184,15 +189,15 @@ namespace BinauralBeats
             _startButton = new Button
             {
                 Text = "Start",
-                Location = new System.Drawing.Point(10, ClientSize.Height - 110),
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+                Location = new System.Drawing.Point(530, 50),
+                Size = new System.Drawing.Size(100, 30)
             };
 
             _stopButton = new Button
             {
                 Text = "Stop",
-                Location = new System.Drawing.Point(100, ClientSize.Height - 110),
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+                Location = new System.Drawing.Point(640, 50),
+                Size = new System.Drawing.Size(100, 30)
             };
 
             _volumeSlider = new TrackBar
@@ -201,33 +206,37 @@ namespace BinauralBeats
                 Maximum = 100,
                 Value = 100,
                 TickFrequency = 10,
-                LargeChange = 10,
-                SmallChange = 1,
                 Orientation = Orientation.Horizontal,
-                Location = new System.Drawing.Point(10, ClientSize.Height - 70),
-                Width = ClientSize.Width - 20,
-                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+                Location = new System.Drawing.Point(530, 100),
+                Size = new System.Drawing.Size(210, 45)
             };
-            _volumeSlider.Scroll += (s, e) => _engine.Volume = _volumeSlider.Value / 100f;
 
-            _durationSlider = new TrackBar
+            _durationSelector = new ComboBox
             {
-                Minimum = 1,
-                Maximum = 60,
-                Value = 15,
-                TickFrequency = 5,
-                LargeChange = 5,
-                SmallChange = 1,
-                Orientation = Orientation.Horizontal,
-                Location = new System.Drawing.Point(10, ClientSize.Height - 40),
-                Width = ClientSize.Width - 20,
-                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new System.Drawing.Point(530, 160),
+                Width = 60
             };
+            for (int i = 1; i <= 60; i++)
+            {
+                _durationSelector.Items.Add(i);
+            }
+            _durationSelector.SelectedIndex = 14;
+
+            _timerLabel = new Label
+            {
+                Text = "15:00",
+                Location = new System.Drawing.Point(600, 163),
+                AutoSize = true
+            };
+
+            _volumeSlider.Scroll += (s, e) => _engine.Volume = _volumeSlider.Value / 100f;
 
             _startButton.Click += (s, e) =>
             {
-                int durationMinutes = _durationSlider.Value;
-                _playbackTimer.Interval = durationMinutes * 60 * 1000;
+                int durationMinutes = (int)_durationSelector.SelectedItem;
+                _remainingTime = TimeSpan.FromMinutes(durationMinutes);
+                _timerLabel.Text = _remainingTime.ToString(@"mm\:ss");
                 _playbackTimer.Start();
 
                 if (_tabControl.SelectedTab == _binauralTab)
@@ -238,39 +247,43 @@ namespace BinauralBeats
                 {
                     _engine.StartBrownNoise();
                 }
+                else
+                {
+                    _engine.PlayMriSound();
+                }
             };
 
-            _stopButton.Click += (s, e) => _engine.Stop();
-
-            Controls.Add(_tabControl);
-            Controls.Add(_startButton);
-            Controls.Add(_stopButton);
-            Controls.Add(_volumeSlider);
-            Controls.Add(_durationSlider);
-
-            _playbackTimer = new System.Windows.Forms.Timer();
-            _playbackTimer.Tick += (s, e) =>
+            _stopButton.Click += (s, e) =>
             {
                 _engine.Stop();
                 _playbackTimer.Stop();
             };
 
-            Resize += (s, e) =>
+            Controls.Add(_tabControl);
+            Controls.Add(_startButton);
+            Controls.Add(_stopButton);
+            Controls.Add(_volumeSlider);
+            Controls.Add(_durationSelector);
+            Controls.Add(_timerLabel);
+
+            _playbackTimer = new System.Windows.Forms.Timer();
+            _playbackTimer.Interval = 1000;
+            _playbackTimer.Tick += (s, e) =>
             {
-                _tabControl.Size = new System.Drawing.Size(ClientSize.Width, ClientSize.Height - 160);
-                _startButton.Location = new System.Drawing.Point(10, ClientSize.Height - 110);
-                _stopButton.Location = new System.Drawing.Point(100, ClientSize.Height - 110);
-                _volumeSlider.Location = new System.Drawing.Point(10, ClientSize.Height - 70);
-                _volumeSlider.Width = ClientSize.Width - 20;
-                _durationSlider.Location = new System.Drawing.Point(10, ClientSize.Height - 40);
-                _durationSlider.Width = ClientSize.Width - 20;
+                _remainingTime = _remainingTime.Subtract(TimeSpan.FromSeconds(1));
+                _timerLabel.Text = _remainingTime.ToString(@"mm\:ss");
+                if (_remainingTime.TotalSeconds <= 0)
+                {
+                    _engine.Stop();
+                    _playbackTimer.Stop();
+                }
             };
         }
 
         private void InitializeBinauralTab()
         {
-            _baseFreqInput = new NumericUpDown { Minimum = 100, Maximum = 1000, Value = 200, Location = new System.Drawing.Point(10, 10) };
-            _beatFreqInput = new NumericUpDown { Minimum = 1, Maximum = 30, Value = 7, Location = new System.Drawing.Point(10, 40) };
+            _baseFreqInput = new NumericUpDown { Minimum = 100, Maximum = 1000, Value = 220, Location = new System.Drawing.Point(10, 10) };
+            _beatFreqInput = new NumericUpDown { Minimum = 1, Maximum = 30, Value = 12, Location = new System.Drawing.Point(10, 40) };
 
             _presetAlphaButton = new Button { Text = "Alpha (10Hz)", Location = new System.Drawing.Point(10, 80) };
             _presetThetaButton = new Button { Text = "Theta (6Hz)", Location = new System.Drawing.Point(120, 80) };
