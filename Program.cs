@@ -156,6 +156,8 @@ namespace BinauralBeats
             InitializeBinauralTab();
             InitializeNoiseTab();
 
+            Icon = new Icon("neurotones.ico");
+
             _tabControl.TabPages.Add(_binauralTab);
             _tabControl.TabPages.Add(_noiseTab);
 
