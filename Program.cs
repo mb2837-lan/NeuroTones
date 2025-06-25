@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using NAudio.Wave;
+using System.IO;
 
 namespace BinauralBeats
 {
@@ -116,6 +117,24 @@ namespace BinauralBeats
             _waveOut?.Dispose();
             _waveOut = null;
         }
+
+        public void PlayMriSound()
+        {
+            Stop();
+
+            var player = new System.Media.SoundPlayer();
+            var mriPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mri.wav");
+            if (File.Exists(mriPath))
+            {
+                player.SoundLocation = mriPath;
+                player.Load();
+                player.PlayLooping();
+            }
+            else
+            {
+                MessageBox.Show("MRI sound file not found: mri.wav", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
     }
 
     public partial class Form1 : Form
@@ -123,18 +142,17 @@ namespace BinauralBeats
         private TabControl _tabControl;
         private TabPage _binauralTab;
         private TabPage _noiseTab;
-
         private NumericUpDown _baseFreqInput;
         private NumericUpDown _beatFreqInput;
         private Button _presetAlphaButton;
         private Button _presetThetaButton;
-
         private Button _brownNoiseButton;
         private Button _startButton;
         private Button _stopButton;
         private TrackBar _volumeSlider;
-
         private AudioEngine _engine;
+        private TrackBar _durationSlider;
+        private System.Windows.Forms.Timer _playbackTimer;
 
         public Form1()
         {
@@ -142,6 +160,7 @@ namespace BinauralBeats
 
             Text = "NeuroTones";
             MinimumSize = new System.Drawing.Size(360, 460);
+            Icon = new Icon("neurotones.ico");
 
             _tabControl = new TabControl
             {
@@ -152,26 +171,27 @@ namespace BinauralBeats
 
             _binauralTab = new TabPage("Binaural Beats");
             _noiseTab = new TabPage("Noise");
+            var _mriTab = new TabPage("MRI");
 
             InitializeBinauralTab();
             InitializeNoiseTab();
-
-            Icon = new Icon("neurotones.ico");
+            InitializeMriTab(_mriTab);
 
             _tabControl.TabPages.Add(_binauralTab);
             _tabControl.TabPages.Add(_noiseTab);
+            _tabControl.TabPages.Add(_mriTab);
 
             _startButton = new Button
             {
                 Text = "Start",
-                Location = new System.Drawing.Point(10, ClientSize.Height - 80),
+                Location = new System.Drawing.Point(10, ClientSize.Height - 110),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left
             };
 
             _stopButton = new Button
             {
                 Text = "Stop",
-                Location = new System.Drawing.Point(100, ClientSize.Height - 80),
+                Location = new System.Drawing.Point(100, ClientSize.Height - 110),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left
             };
 
@@ -184,15 +204,32 @@ namespace BinauralBeats
                 LargeChange = 10,
                 SmallChange = 1,
                 Orientation = Orientation.Horizontal,
+                Location = new System.Drawing.Point(10, ClientSize.Height - 70),
+                Width = ClientSize.Width - 20,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+            };
+            _volumeSlider.Scroll += (s, e) => _engine.Volume = _volumeSlider.Value / 100f;
+
+            _durationSlider = new TrackBar
+            {
+                Minimum = 1,
+                Maximum = 60,
+                Value = 15,
+                TickFrequency = 5,
+                LargeChange = 5,
+                SmallChange = 1,
+                Orientation = Orientation.Horizontal,
                 Location = new System.Drawing.Point(10, ClientSize.Height - 40),
                 Width = ClientSize.Width - 20,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
             };
 
-            _volumeSlider.Scroll += (s, e) => _engine.Volume = _volumeSlider.Value / 100f;
-
             _startButton.Click += (s, e) =>
             {
+                int durationMinutes = _durationSlider.Value;
+                _playbackTimer.Interval = durationMinutes * 60 * 1000;
+                _playbackTimer.Start();
+
                 if (_tabControl.SelectedTab == _binauralTab)
                 {
                     _engine.Start((float)_baseFreqInput.Value, (float)_beatFreqInput.Value);
@@ -209,14 +246,24 @@ namespace BinauralBeats
             Controls.Add(_startButton);
             Controls.Add(_stopButton);
             Controls.Add(_volumeSlider);
+            Controls.Add(_durationSlider);
+
+            _playbackTimer = new System.Windows.Forms.Timer();
+            _playbackTimer.Tick += (s, e) =>
+            {
+                _engine.Stop();
+                _playbackTimer.Stop();
+            };
 
             Resize += (s, e) =>
             {
-                _tabControl.Size = new System.Drawing.Size(ClientSize.Width, ClientSize.Height - 130);
-                _startButton.Location = new System.Drawing.Point(10, ClientSize.Height - 80);
-                _stopButton.Location = new System.Drawing.Point(100, ClientSize.Height - 80);
-                _volumeSlider.Location = new System.Drawing.Point(10, ClientSize.Height - 40);
+                _tabControl.Size = new System.Drawing.Size(ClientSize.Width, ClientSize.Height - 160);
+                _startButton.Location = new System.Drawing.Point(10, ClientSize.Height - 110);
+                _stopButton.Location = new System.Drawing.Point(100, ClientSize.Height - 110);
+                _volumeSlider.Location = new System.Drawing.Point(10, ClientSize.Height - 70);
                 _volumeSlider.Width = ClientSize.Width - 20;
+                _durationSlider.Location = new System.Drawing.Point(10, ClientSize.Height - 40);
+                _durationSlider.Width = ClientSize.Width - 20;
             };
         }
 
@@ -252,6 +299,13 @@ namespace BinauralBeats
             _brownNoiseButton = new Button { Text = "Brown Noise", Location = new System.Drawing.Point(10, 10) };
             _brownNoiseButton.Click += (s, e) => _engine.StartBrownNoise();
             _noiseTab.Controls.Add(_brownNoiseButton);
+        }
+
+        private void InitializeMriTab(TabPage mriTab)
+        {
+            var mriButton = new Button { Text = "Play MRI Sound", Location = new System.Drawing.Point(10, 10) };
+            mriButton.Click += (s, e) => _engine.PlayMriSound();
+            mriTab.Controls.Add(mriButton);
         }
     }
 }
