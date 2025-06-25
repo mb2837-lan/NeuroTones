@@ -73,6 +73,25 @@ namespace BinauralBeats
         }
     }
 
+    public class WhiteNoiseProvider : WaveProvider32
+    {
+        private Random _rand = new Random();
+
+        public WhiteNoiseProvider()
+        {
+            SetWaveFormat(44100, 1); // Mono
+        }
+
+        public override int Read(float[] buffer, int offset, int sampleCount)
+        {
+            for (int i = 0; i < sampleCount; i++)
+            {
+                buffer[offset + i] = (float)(_rand.NextDouble() * 2.0 - 1.0);
+            }
+            return sampleCount;
+        }
+    }
+
     public class AudioEngine
     {
         private WaveOutEvent _waveOut;
@@ -111,6 +130,16 @@ namespace BinauralBeats
             _waveOut.Play();
         }
 
+        public void StartWhiteNoise()
+        {
+            Stop();
+            
+            _provider = new WhiteNoiseProvider();
+            _waveOut = new WaveOutEvent();
+            _waveOut.Init(_provider);
+            _waveOut.Play();
+        }
+
         public void Stop()
         {
             _waveOut?.Stop();
@@ -142,11 +171,13 @@ namespace BinauralBeats
         private TabControl _tabControl;
         private TabPage _binauralTab;
         private TabPage _noiseTab;
+        private TabPage _whiteNoiseTab;
         private NumericUpDown _baseFreqInput;
         private NumericUpDown _beatFreqInput;
         private Button _presetAlphaButton;
         private Button _presetThetaButton;
         private Button _brownNoiseButton;
+        private Button _whiteNoiseButton;
         private Button _startButton;
         private Button _stopButton;
         private TrackBar _volumeSlider;
@@ -161,7 +192,7 @@ namespace BinauralBeats
         {
             _engine = new AudioEngine();
 
-            Text = "NeuroTones";
+            Text = "Neuro Tones";
             Size = new System.Drawing.Size(800, 600);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
@@ -173,17 +204,20 @@ namespace BinauralBeats
             };
 
             _binauralTab = new TabPage("Binaural Beats");
-            _noiseTab = new TabPage("Noise");
+            _noiseTab = new TabPage("Bown Noise");
+            _whiteNoiseTab = new TabPage("White Noise");
             var _mriTab = new TabPage("MRI");
 
             InitializeBinauralTab();
             InitializeNoiseTab();
+            InitializeWhiteNoiseTab();
             InitializeMriTab(_mriTab);
 
             Icon = new Icon("neurotones.ico");
 
             _tabControl.TabPages.Add(_binauralTab);
             _tabControl.TabPages.Add(_noiseTab);
+            _tabControl.TabPages.Add(_whiteNoiseTab);
             _tabControl.TabPages.Add(_mriTab);
 
             _startButton = new Button
@@ -246,6 +280,10 @@ namespace BinauralBeats
                 else if (_tabControl.SelectedTab == _noiseTab)
                 {
                     _engine.StartBrownNoise();
+                }
+                else if (_tabControl.SelectedTab == _whiteNoiseTab)
+                {
+                    _engine.StartWhiteNoise();
                 }
                 else
                 {
@@ -312,6 +350,13 @@ namespace BinauralBeats
             _brownNoiseButton = new Button { Text = "Brown Noise", Location = new System.Drawing.Point(10, 10) };
             _brownNoiseButton.Click += (s, e) => _engine.StartBrownNoise();
             _noiseTab.Controls.Add(_brownNoiseButton);
+        }
+
+        private void InitializeWhiteNoiseTab()
+        {
+            _whiteNoiseButton = new Button { Text = "White Noise", Location = new System.Drawing.Point(10, 10) };
+            _whiteNoiseButton.Click += (s, e) => _engine.StartWhiteNoise();
+            _whiteNoiseTab.Controls.Add(_whiteNoiseButton);
         }
 
         private void InitializeMriTab(TabPage mriTab)
